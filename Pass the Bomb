@@ -1,0 +1,871 @@
+
+
+
+
+    
+
+
+
+
+
+
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+
+local Window = Fluent:CreateWindow({
+    Title = "VGXMOD X PASS THE BOMB " .. Fluent.Version,
+    SubTitle = "by Pkgx1",
+    TabWidth = 120,
+    Size = UDim2.fromOffset(520, 400),
+    Acrylic = true, -- The blur may be detectable, setting this to false disables blur entirely
+    Theme = "Aqua",
+    MinimizeKey = Enum.KeyCode.LeftControl -- Used when theres no MinimizeKeybind
+})
+
+
+-- ADD TAB HERE --
+local Tabs = {
+    Main = Window:AddTab({ Title = "Main", Icon = "" }),
+    Player = Window:AddTab({ Title = "Player", Icon = "" }),
+    Discord = Window:AddTab({ Title = "Discord", Icon = "" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+
+
+
+
+
+
+Tabs.Discord:AddButton({
+    Title = "Discord",
+    Description = "",
+    Callback = function()
+        print("Button pressed. Discord link copied to clipboard!")
+        setclipboard("https://discord.gg/n9gtmefsjc")
+        Fluent:Notify({
+            Title = "VGXMOD HUB",
+            Content = "Discord Link",
+            SubContent = "Link copied to clipboard! paste the browser",
+            Duration = 5
+        })
+    end
+})
+
+
+
+
+
+
+-- BUTTON 
+-- BUTTON 
+-- BUTTON 
+-- BUTTON
+-- BUTTON 
+-- BUTTON 
+-- BUTTON 
+-- BUTTON 
+-- BUTTON
+-- BUTTON 
+-- BUTTON 
+-- BUTTON 
+-- BUTTON 
+-- BUTTON
+-- BUTTON 
+
+
+
+
+
+
+
+
+
+
+
+
+-- Anti void
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+
+local platform = nil
+local heartbeatConnection = nil
+local charAddedConnection = nil
+
+
+local Toggle2 = Tabs.Player:AddToggle("MyToggle2", {
+    Title = "Anti Void",
+    Default = false
+})
+
+
+Toggle2:OnChanged(function(state)
+    if state then
+        -- Create the fully invisible platform
+        if platform then platform:Destroy() end
+
+
+        platform = Instance.new("Part")
+        platform.Anchored = true
+        platform.Size = Vector3.new(300, 1, 300) -- Similar size to Pass the Bomb platform
+        platform.Position = Vector3.new(-1, 34, 2) -- a bit higher (Y + 2)
+        platform.Transparency = 0.5 -- Fully invisible
+        platform.CanCollide = true -- Always solid
+        platform.CastShadow = false -- No shadow
+        platform.Name = "AntiVoidPlatform"
+        platform.Parent = workspace
+
+
+        -- Reapply after death (optional, but keeps platform solid if character reloads)
+        charAddedConnection = LocalPlayer.CharacterAdded:Connect(function()
+            task.wait(1)
+            if platform then
+                platform.CanCollide = true
+            end
+        end)
+
+
+    else
+        -- Turn off and clean up
+        if charAddedConnection then
+            charAddedConnection:Disconnect()
+            charAddedConnection = nil
+        end
+
+
+        if platform then
+            platform:Destroy()
+            platform = nil
+        end
+    end
+end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- float
+
+
+
+
+
+
+
+
+
+
+
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+
+local platform = nil
+local charAddedConnection = nil
+
+
+local Toggle3 = Tabs.Player:AddToggle("MyToggle3", {
+    Title = "Float",
+    Default = false
+})
+
+
+-- Safe create/lift platform
+local function createPlatformAndLift()
+    if platform and platform.Parent then
+        return -- don't recreate if it already exists
+    end
+
+
+    platform = Instance.new("Part")
+    platform.Anchored = true
+    platform.Size = Vector3.new(300, 1, 300)
+    platform.Position = Vector3.new(-1, 34, 2)
+    platform.Transparency = 1
+    platform.CanCollide = true
+    platform.CastShadow = false
+    platform.Name = "AntiVoidPlatform"
+    
+    -- Optional: Use a folder to prevent cleanup
+    local safeFolder = workspace:FindFirstChild("CustomParts") or Instance.new("Folder", workspace)
+    safeFolder.Name = "CustomParts"
+    platform.Parent = safeFolder
+
+
+    -- Tween it upward
+    local goal = { Position = Vector3.new(-1, 38, 2) }
+    local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local liftTween = TweenService:Create(platform, tweenInfo, goal)
+    liftTween:Play()
+end
+
+
+Toggle3:OnChanged(function(state)
+    if state then
+        createPlatformAndLift()
+
+
+        charAddedConnection = LocalPlayer.CharacterAdded:Connect(function()
+            task.wait(1)
+            createPlatformAndLift()
+        end)
+    else
+        if charAddedConnection then
+            charAddedConnection:Disconnect()
+            charAddedConnection = nil
+        end
+        if platform and platform.Parent then
+            platform:Destroy()
+            platform = nil
+        end
+    end
+end)
+
+
+
+
+
+
+
+
+
+
+-- auto tp
+
+
+
+
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+
+local teleportRange = 20 -- How close the bomb has to be to trigger teleport
+local heartbeatConnection = nil
+
+
+local ToggleBombTeleport = Tabs.Player:AddToggle("ToggleBombTeleport", {
+    Title = "Auto Tp if Bomb near you",
+    Default = false
+})
+
+
+ToggleBombTeleport:OnChanged(function(enabled)
+    if enabled then
+        heartbeatConnection = RunService.Heartbeat:Connect(function()
+            local myCharacter = LocalPlayer.Character
+            if not myCharacter or not myCharacter:FindFirstChild("HumanoidRootPart") then return end
+
+
+            local myPos = myCharacter.HumanoidRootPart.Position
+
+
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer then
+                    local char = workspace:FindFirstChild(player.Name)
+                    if char then
+                        local bomb = char:FindFirstChild("Bomb")
+                        if bomb and bomb:FindFirstChild("Hitbox") then
+                            local bombPos = bomb.Hitbox.Position
+                            local distance = (bombPos - myPos).Magnitude
+
+
+                            if distance < teleportRange then
+                                -- Get random player who does NOT have the bomb
+                                local candidates = {}
+                                for _, otherPlayer in pairs(Players:GetPlayers()) do
+                                    if otherPlayer ~= player and otherPlayer ~= LocalPlayer then
+                                        local otherChar = workspace:FindFirstChild(otherPlayer.Name)
+                                        if otherChar and not otherChar:FindFirstChild("Bomb") then
+                                            table.insert(candidates, otherChar)
+                                        end
+                                    end
+                                end
+
+
+                                if #candidates > 0 then
+                                    local randomChar = candidates[math.random(1, #candidates)]
+                                    local targetHRP = randomChar:FindFirstChild("HumanoidRootPart")
+                                    if targetHRP then
+                                        myCharacter.HumanoidRootPart.CFrame = targetHRP.CFrame + Vector3.new(2, 0, 0) -- slight offset to avoid collision
+                                    end
+                                end
+
+
+                                break -- only teleport once per frame
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if heartbeatConnection then
+            heartbeatConnection:Disconnect()
+            heartbeatConnection = nil
+        end
+    end
+end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- bomb range
+
+
+
+
+
+
+
+
+local SingleDropdown = Tabs.Main:AddDropdown("SingleDropdown", {
+    Title = "Bomb Range",
+    Description = "Select Bomb Range",
+    Values = {"None", "Low", "Mid", "High"},
+    Multi = false, -- make it single-select
+    Default = "None"
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--hitbox
+
+
+local localPlayerName = game.Players.LocalPlayer.Name
+
+
+local Options = {}
+
+
+local hitboxConnections = {}
+
+
+local function resizeCollisionPart(playerName)
+    if playerName ~= localPlayerName then
+        local playerModel = game.Workspace:FindFirstChild(playerName)
+        if playerModel then
+            local collisionPart = playerModel:FindFirstChild("CollisionPart")
+            if collisionPart and collisionPart:IsA("BasePart") then
+                collisionPart.Size = Vector3.new(8.3, 8.3, 8.3)
+                collisionPart.Color = Color3.fromRGB(0, 0, 0)
+                collisionPart.Transparency = 0.9
+                collisionPart.CanCollide = true
+            end
+        end
+    end
+end
+
+
+local function deactivateCollisionPart(playerName)
+    if playerName ~= localPlayerName then
+        local playerModel = game.Workspace:FindFirstChild(playerName)
+        if playerModel then
+            local collisionPart = playerModel:FindFirstChild("CollisionPart")
+            if collisionPart and collisionPart:IsA("BasePart") then
+                collisionPart.Transparency = 1 
+                collisionPart.CanCollide = false 
+            end
+        end
+    end
+end
+
+
+local function monitorPlayers()
+    for _, player in pairs(game.Players:GetPlayers()) do
+        local connection = game:GetService("RunService").Heartbeat:Connect(function()
+            if Options.ToggleHit.Value then
+                resizeCollisionPart(player.Name)
+            else
+                deactivateCollisionPart(player.Name)
+            end
+        end)
+        table.insert(hitboxConnections, connection)
+    end
+
+
+    local playerAddedConnection = game.Players.PlayerAdded:Connect(function(player)
+        local connection = game:GetService("RunService").Heartbeat:Connect(function()
+            if Options.ToggleHit.Value then
+                resizeCollisionPart(player.Name)
+            else
+                deactivateCollisionPart(player.Name)
+            end
+        end)
+        table.insert(hitboxConnections, connection)
+    end)
+    table.insert(hitboxConnections, playerAddedConnection)
+end
+
+
+local ToggleHit = Tabs.Main:AddToggle("ToggleHit", {Title = "Hitbox", Default = false })
+Options.ToggleHit = ToggleHit
+
+
+ToggleHit:OnChanged(function()
+    if Options.ToggleHit.Value then
+        monitorPlayers()
+    else
+        for _, connection in ipairs(hitboxConnections) do
+            connection:Disconnect()
+        end
+        hitboxConnections = {}
+        
+        for _, player in pairs(game.Players:GetPlayers()) do
+            deactivateCollisionPart(player.Name)
+        end
+    end
+end)
+
+
+Options.ToggleHit:SetValue(false)
+
+
+--hitbox input
+
+
+local maxHitboxSize = 8.3
+
+
+local Input = Tabs.Main:AddInput("Input", {
+    Title = "Hitbox Size",
+    Default = "",
+    Placeholder = "Enter size",
+    Numeric = true, 
+    Finished = false, 
+    Callback = function(Value)
+        print("Input changed:", Value)
+    end
+})
+
+
+Input:OnChanged(function()
+    local newSize = tonumber(Input.Value)
+    if newSize then
+        if newSize > maxHitboxSize then
+            newSize = maxHitboxSize 
+        elseif newSize < 0 then
+            newSize = 0 
+        end
+
+
+        
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player.Name ~= localPlayerName then
+                local playerModel = game.Workspace:FindFirstChild(player.Name)
+                if playerModel then
+                    local collisionPart = playerModel:FindFirstChild("CollisionPart")
+                    if collisionPart and collisionPart:IsA("BasePart") then
+                        collisionPart.Size = Vector3.new(newSize, newSize, newSize)
+                    end
+                end
+            end
+        end
+
+
+        print("Hitbox size updated to:", newSize)
+    else
+        print("Invalid input for hitbox size.")
+    end
+end)
+
+
+
+
+--esp bomb
+
+
+local espConnections = {}
+
+
+local function createESP(part, text, color)
+    if part:FindFirstChild("ESP") then
+        part:FindFirstChild("ESP"):Destroy()
+    end
+
+
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "ESP"
+    billboardGui.Adornee = part
+    billboardGui.Size = UDim2.new(0, 100, 0, 100)
+    billboardGui.AlwaysOnTop = true
+
+
+    local label = Instance.new("TextLabel", billboardGui)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.Text = text
+    label.BackgroundTransparency = 1
+    label.TextColor3 = color
+    label.TextStrokeTransparency = 0.5
+    label.Font = Enum.Font.SourceSansBold
+    label.TextSize = 25
+
+
+    billboardGui.Parent = part
+end
+
+
+local function destroyESP()
+    for _, player in pairs(game.Players:GetPlayers()) do
+        local playerModel = game.Workspace:FindFirstChild(player.Name)
+        if playerModel then
+            local bomb = playerModel:FindFirstChild("Bomb")
+            if bomb then
+                local hitbox = bomb:FindFirstChild("Hitbox")
+                if hitbox and hitbox:FindFirstChild("ESP") then
+                    hitbox:FindFirstChild("ESP"):Destroy()
+                end
+            end
+        end
+    end
+end
+
+
+local function monitorBombs()
+    for _, player in pairs(game.Players:GetPlayers()) do
+        local connection = game:GetService("RunService").Heartbeat:Connect(function()
+            if Options.ToggleEspBomb.Value then
+                local playerModel = game.Workspace:FindFirstChild(player.Name)
+                if playerModel then
+                    local bomb = playerModel:FindFirstChild("Bomb")
+                    if bomb then
+                        local hitbox = bomb:FindFirstChild("Hitbox")
+                        if hitbox then
+                            createESP(hitbox, "BOMB", Color3.fromRGB(255, 0, 0))
+                        end
+                    end
+                end
+            end
+        end)
+        table.insert(espConnections, connection)
+    end
+end
+
+
+local ToggleEspBomb = Tabs.Main:AddToggle("ToggleEspBomb", {Title = "Esp Bomb", Default = false })
+Options.ToggleEspBomb = ToggleEspBomb
+
+
+ToggleEspBomb:OnChanged(function()
+    if Options.ToggleEspBomb.Value then
+        monitorBombs()
+    else
+        for _, connection in ipairs(espConnections) do
+            connection:Disconnect()
+        end
+        espConnections = {}
+        destroyESP() 
+    end
+end)
+
+
+Options.ToggleEspBomb:SetValue(false)
+
+
+--Auto Farm(Incompleto)
+
+
+local localPlayer = game.Players.LocalPlayer
+
+
+local Options = {}
+local isToggleActive = false
+local lastSafePosition = nil
+local fallThreshold = -2 
+
+
+
+
+local function monitorPlayerPosition()
+    while true do
+        local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+        
+        if humanoidRootPart then
+            if humanoidRootPart.Position.Y > fallThreshold then
+                lastSafePosition = humanoidRootPart.CFrame
+            elseif humanoidRootPart.Position.Y <= fallThreshold and lastSafePosition then
+                
+                humanoidRootPart.CFrame = lastSafePosition
+            end
+        end
+        wait(0.1) 
+    end
+end
+
+
+
+
+local function hasBombInModel()
+    local playerModel = game.Workspace:FindFirstChild(localPlayer.Name)
+    if playerModel then
+        for _, child in pairs(playerModel:GetChildren()) do
+            if child.Name == "Bomb" then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+
+
+
+local function findPlayerWithoutBomb()
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player.Name ~= localPlayer.Name then
+            local playerModel = game.Workspace:FindFirstChild(player.Name)
+            if playerModel and not playerModel:FindFirstChild("Bomb") then
+                local collisionPart = playerModel:FindFirstChild("CollisionPart")
+                if collisionPart then
+                    return collisionPart
+                end
+            end
+        end
+    end
+    return nil
+end
+
+
+
+
+local function teleportToCoin(coinPart)
+    local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    if coinPart and humanoidRootPart then
+        humanoidRootPart.CFrame = coinPart.CFrame
+    end
+end
+
+
+
+
+local function teleportToCoins()
+    while isToggleActive do
+        local playerModel = game.Workspace:FindFirstChild(localPlayer.Name)
+
+
+        
+        while not playerModel and isToggleActive do
+            wait(0.1)
+            playerModel = game.Workspace:FindFirstChild(localPlayer.Name)
+        end
+
+
+        
+        while hasBombInModel() and isToggleActive do
+            local safePart = findPlayerWithoutBomb()
+            if safePart then
+                local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+                local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    humanoidRootPart.CFrame = safePart.CFrame
+                end
+            end
+            wait(0.1) 
+        end
+
+
+        if isToggleActive then
+            local disastersFolder = game.Workspace:FindFirstChild("DisastersFolder")
+            if disastersFolder then
+                for _, coin in pairs(disastersFolder:GetDescendants()) do
+                    if coin:IsA("Model") and coin.Name:sub(1, 4) == "Coin" then
+                        local pp = coin:FindFirstChild("PP")
+                        if pp and pp:IsA("BasePart") and pp:FindFirstChildOfClass("TouchTransmitter") then
+                            teleportToCoin(pp)
+                            wait(1) 
+                            if not isToggleActive then break end
+                        end
+                    end
+                end
+            end
+        end
+        wait(0.1) 
+    end
+end
+
+
+local Toggle = Tabs.Main:AddToggle("MyToggle", {Title = "Auto Farm", Default = false })
+Options.MyToggle = Toggle
+
+
+Toggle:OnChanged(function()
+    isToggleActive = Options.MyToggle.Value
+    print("Toggle changed:", isToggleActive)
+    if isToggleActive then
+        spawn(teleportToCoins) 
+    end
+end)
+
+
+Options.MyToggle:SetValue(false)
+
+
+
+
+
+
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+-- END MAIN BUTTON
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+
+
+
+
+SaveManager:IgnoreThemeSettings()
+
+
+
+
+SaveManager:SetIgnoreIndexes({})
+
+
+
+
+InterfaceManager:SetFolder("FluentScriptHub")
+SaveManager:SetFolder("FluentScriptHub/specific-game")
+
+
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+
+
+
+Window:SelectTab(1)
+
+
+Fluent:Notify({
+    Title = "VGXMOD x PASS THE BOMB",
+    Content = "The script has been loaded.",
+    Duration = 8
+})
+
+
+
+
+SaveManager:LoadAutoloadConfig()
